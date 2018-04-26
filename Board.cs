@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace fc_tetris_core
 {
@@ -16,6 +18,15 @@ namespace fc_tetris_core
         public string CharBottomRight { get; set; }
         public string CharBrick { get; set; }
         public Brick ActiveBrick { get; set; }
+        public Brick NextPosActiveBrick { get; set; }
+
+        /// <summary>
+        /// Number of Tiles to go down
+        /// </summary>
+        public int Gravity { get; set; }
+        // When Player Press a key, modify those numbers
+        public int userX { get; set; }
+        public int userY { get; set; }
 
         public Board(int width=20,int height=30)
         {
@@ -34,13 +45,16 @@ namespace fc_tetris_core
             Height = height;
 
             // Inicialização
+            userX = 0;
+            userY = 0;
+            Gravity = 1;
             Grid = new string[Width,Height];
             initializeGrid();
             CreateBrick();
         }
 
         public void Draw(int posX = 0,int posY = 0){
-            DrawActiveBrick();
+            // DrawActiveBrick(CharBrick);
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.SetCursorPosition(posX, posY);
             for (int i = 0; i < Height; i++)
@@ -63,7 +77,7 @@ namespace fc_tetris_core
                     if (i == 0 || i == Height -1)
                     {
                         Grid[j, i] = CharHorizontalWall;
-                    }else
+                    }else   
                     {
                         if (j == 0 || j == Width -1)
                         {
@@ -90,14 +104,44 @@ namespace fc_tetris_core
             ActiveBrick.BoardPosition = ((Width / 2 ) -1, 1);
         }
 
-        public void updateActiveBrick(){
+        private void updateActiveBrick(){
+            NextPosActiveBrick = ActiveBrick;
+            NextPosActiveBrick.BoardPosition =
+                (ActiveBrick.BoardPosition.x + userX, ActiveBrick.BoardPosition.y + Gravity + userY);
 
+            DrawActiveBrick(CharBlank);
+            // Load positions of old Brick to avoid collision with itself
+            List<(int x, int y)> tmpPos = new List<(int x, int y)>();
+            foreach ((int x, int y) oldPos in ActiveBrick.Positions)
+            {
+                tmpPos.Add((ActiveBrick.BoardPosition.x + oldPos.x, ActiveBrick.BoardPosition.y + oldPos.y));
+            }
+
+            foreach ((int x, int y) newPos in NextPosActiveBrick.Positions)
+            {
+                (int x, int y) tmp = (newPos.x + NextPosActiveBrick.BoardPosition.x, newPos.y + NextPosActiveBrick.BoardPosition.y);
+                if (Grid[tmp.y,tmp.x] == CharBlank)
+                {
+                    Debug.Write("Deveria Continuar");
+                }else
+                {
+                    ActiveBrick.canMove = false;
+                    Debug.WriteLine("DEVIA PARAR ESSA BOSTA!");
+                }
+            }
+            if (ActiveBrick.canMove)
+            {
+                ActiveBrick = NextPosActiveBrick;
+                DrawActiveBrick(CharBrick);
+                Debug.WriteLine("Atualizou");
+            }
+            
         }
 
-        public void DrawActiveBrick(){
+        public void DrawActiveBrick(string character){
             foreach ((int x, int y) pos in ActiveBrick.Positions)
             {
-                Grid[pos.x + ActiveBrick.BoardPosition.x, pos.y + ActiveBrick.BoardPosition.y] = CharBrick;
+                Grid[pos.x + ActiveBrick.BoardPosition.x, pos.y + ActiveBrick.BoardPosition.y] = character;
             }
         }
 
@@ -118,9 +162,10 @@ namespace fc_tetris_core
         /// <summary>
         /// Applies Gravity to blocks, making everything fall
         /// </summary>
-        public void updateGrid(){
+        public void Update(){
             if (ActiveBrick.canMove)
             {
+                updateActiveBrick();
                 //Move Brick
             }else
             {
